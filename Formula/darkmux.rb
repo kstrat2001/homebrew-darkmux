@@ -5,7 +5,7 @@
 #
 # Operator-facing install path:
 #   brew tap kstrat2001/darkmux
-#   brew install darkmux                # stable release (v0.9.0)
+#   brew install darkmux                # stable release (v1.0.0)
 #   brew install --HEAD darkmux         # build from main instead
 #
 # For local development / smoke testing:
@@ -17,12 +17,12 @@
 class Darkmux < Formula
   desc "Profile multiplexer + lab for local LLM stacks (LMStudio, Ollama)"
   homepage "https://darkmux.com"
-  # Stable release: v0.9.0 (darkmux's first tagged release). `brew install
+  # Stable release: v1.0.0 (semver stability begins). `brew install
   # darkmux` builds from this source tarball; `brew install --HEAD darkmux`
   # builds from main instead. The sha256 is of the GitHub-generated source
   # tarball for the tag (`shasum -a 256` of the archive download).
-  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v0.9.0.tar.gz"
-  sha256 "b4145029288d225d10915a0bdf1f64754f6ef5f8eaaceb7952768397c8e8b3db"
+  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v1.0.0.tar.gz"
+  sha256 "20b5fc69a078cdd8b691ed887ab039486ba2f83761b4808aa493a21749e48a8d"
   license "MIT"
   head "https://github.com/kstrat2001/darkmux.git", branch: "main"
 
@@ -72,14 +72,15 @@ class Darkmux < Formula
       darkmux is installed but the `serve` daemon is NOT started by default.
 
       Scope: this formula ships the `darkmux` CLI + `serve` daemon + the
-      keychain wrapper + bundled skills. It does NOT ship the
-      `darkmux-runtime` Docker image — `darkmux crew dispatch` and
-      `darkmux lab run` need that image, which requires a source checkout +
-      `docker build -t darkmux-runtime:latest runtime/` (a published image
-      is tracked in #618). brew = complete install for `swap` / `status` /
-      `profiles` / `fleet` / `flow` / `serve` / `doctor` and for the hub
-      coordinator role. For local dispatches, supplement with a runtime
-      image from a source checkout.
+      keychain wrapper + bundled skills. The `darkmux-runtime` Docker image
+      that `darkmux crew dispatch` and `darkmux lab run` use is not bundled,
+      but you don't build it by hand: on the first dispatch with no local
+      image, darkmux pulls the version-pinned image from GHCR on demand
+      (ghcr.io/kstrat2001/darkmux-runtime:<version>, #759) — you just need
+      Docker running. (`docker build -t darkmux-runtime:latest runtime/` from
+      a source checkout is the offline/dev alternative.) So brew is a complete
+      install end to end: `swap` / `status` / `profiles` / `fleet` / `flow` /
+      `serve` / `doctor`, the hub coordinator role, AND local dispatches.
 
       For a single-machine CLI install (no daemon needed):
         # Already done. Run `darkmux --help` to explore.
