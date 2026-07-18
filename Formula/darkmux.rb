@@ -5,7 +5,7 @@
 #
 # Operator-facing install path:
 #   brew tap kstrat2001/darkmux
-#   brew install darkmux                # stable release (v1.18.5)
+#   brew install darkmux                # stable release (v2.0.0)
 #   brew install --HEAD darkmux         # build from main instead
 #
 # For local development / smoke testing:
@@ -15,7 +15,7 @@
 # skill), #280 (related fleet primitive that simplifies post-formula).
 
 class Darkmux < Formula
-  desc "Profile multiplexer + lab for local LLM stacks (LMStudio, Ollama)"
+  desc "Mission orchestrator and lab for local AI, running your models or a cloud endpoint"
   homepage "https://darkmux.com"
   # Stable release: v1.17.1 (the review-funnel release — prosecution/judgment PR review
   # contract + pr-reviewer-agentic role for tool-granting cloud review
@@ -26,8 +26,8 @@ class Darkmux < Formula
   # `brew install darkmux` builds from this source tarball; `brew install
   # --HEAD darkmux` builds from main instead. The sha256 is of the
   # GitHub-generated source tarball for the tag (`shasum -a 256`).
-  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v1.18.5.tar.gz"
-  sha256 "6d60e1cb40d62cde8edd65727ff554a45a21d45c2fd22a8b4cc0bd8de43da419"
+  url "https://github.com/kstrat2001/darkmux/archive/refs/tags/v2.0.0.tar.gz"
+  sha256 "d5b8274d89cdce6299a3a7409e5b7ef309ce4736d5b8813af76f5f5017dfcd74"
   license "MIT"
   head "https://github.com/kstrat2001/darkmux.git", branch: "main"
 
@@ -85,14 +85,15 @@ class Darkmux < Formula
 
       Scope: this formula ships the `darkmux` CLI + `serve` daemon + the
       keychain wrapper + bundled skills. The `darkmux-runtime` Docker image
-      that `darkmux crew dispatch` and `darkmux lab run` use is not bundled,
+      that `darkmux dispatch` and `darkmux lab run` use is not bundled,
       but you don't build it by hand: on the first dispatch with no local
       image, darkmux pulls the version-pinned image from GHCR on demand
       (ghcr.io/kstrat2001/darkmux-runtime:<version>, #759) — you just need
       Docker running. (`docker build -t darkmux-runtime:latest runtime/` from
       a source checkout is the offline/dev alternative.) So brew is a complete
-      install end to end: `swap` / `status` / `profiles` / `fleet` / `flow` /
-      `serve` / `doctor`, the hub coordinator role, AND local dispatches.
+      install end to end: `dispatch` / `mission` / `machine` / `profile` /
+      `flow` / `serve` / `doctor`, the hub coordinator role, AND local
+      dispatches.
 
       For a single-machine CLI install (no daemon needed):
         # Already done. Run `darkmux --help` to explore.
@@ -139,7 +140,7 @@ class Darkmux < Formula
 
   test do
     assert_match "darkmux", shell_output("#{bin}/darkmux --version")
-    assert_match "fleet",   shell_output("#{bin}/darkmux fleet --help")
+    assert_match "machine", shell_output("#{bin}/darkmux machine --help")
     assert_match "doctor",  shell_output("#{bin}/darkmux --help")
     # Doctor should run end-to-end without panic; non-zero exit is fine
     # (it'll warn about most checks in a fresh install with no profile + no
