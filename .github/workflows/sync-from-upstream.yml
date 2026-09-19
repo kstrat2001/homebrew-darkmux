@@ -1,0 +1,93 @@
+name: Sync formula from upstream darkmux
+
+# PULL, not push — and that inversion is the whole point.
+#
+# The previous design lived in kstrat2001/darkmux and PUSHED here, which is a
+# cross-repo write and therefore needed a stored PAT. On 2026-09-19 that token
+# had expired: the workflow died with `Bad credentials`, opened nothing, and
+# v3.8.0 shipped while this tap kept serving v3.7.1. Every other release signal
+# was green, so nothing surfaced it — a `brew upgrade darkmux` simply handed
+# users the previous version. See kstrat2001/darkmux#2825.
+#
+# Reading `packaging/homebrew/darkmux.rb` from a PUBLIC repo needs no auth at
+# all, and writing to THIS repo uses the built-in GITHUB_TOKEN. So there is no
+# stored secret, nothing to rotate, and nothing that can expire.
+#
+# The schedule also makes the tap self-healing: if a release ever forgets this
+# step, the next scheduled run notices and opens the PR anyway, instead of the
+# tap sitting silently behind until a user reports an old version.
+
+on:
+  schedule:
+    # Every 6 hours. The tap only changes on a release, so this is cheap
+    # (one fetch + one diff) and exists to catch a MISSED sync, not to be
+    # the primary path — a release runs `workflow_dispatch` directly.
+    - cron: "17 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: pull the formula from kstrat2001/darkmux
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+
+      - name: Fetch upstream formula
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            "https://raw.githubusercontent.com/kstrat2001/darkmux/main/packaging/homebrew/darkmux.rb" \
+            -o /tmp/upstream-darkmux.rb
+          # A truncated or error-page fetch must FAIL here, not quietly
+          # overwrite the formula with garbage. A real formula always
+          # declares both a url and a sha256.
+          grep -q '^  url "' /tmp/upstream-darkmux.rb
+          grep -q '^  sha256 "' /tmp/upstream-darkmux.rb
+
+      - name: Compare
+        id: cmp
+        run: |
+          set -euo pipefail
+          if cmp -s /tmp/upstream-darkmux.rb Formula/darkmux.rb; then
+            echo "tap is already in sync"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "--- upstream differs from the tap ---"
+            diff -u Formula/darkmux.rb /tmp/upstream-darkmux.rb || true
+          fi
+
+      - name: Open a PR with the upstream formula
+        if: steps.cmp.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BRANCH="sync-formula-$(date -u +%Y%m%d-%H%M%S)"
+          cp /tmp/upstream-darkmux.rb Formula/darkmux.rb
+          UPSTREAM_URL=$(grep -m1 '^  url "' Formula/darkmux.rb | sed 's/.*"\(.*\)".*/\1/')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add Formula/darkmux.rb
+          git commit -m "sync formula from upstream darkmux
+
+          Pulled verbatim from kstrat2001/darkmux@main:packaging/homebrew/darkmux.rb.
+          url now: $UPSTREAM_URL"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "sync formula from upstream darkmux" \
+            --body "Verbatim copy of \`packaging/homebrew/darkmux.rb\` from [kstrat2001/darkmux@main](https://github.com/kstrat2001/darkmux/blob/main/packaging/homebrew/darkmux.rb).
+
+          Opened by this repo's own scheduled pull, which needs no stored credential — see the workflow header and kstrat2001/darkmux#2825 for why the push-based version was replaced.
+
+          After merging, verify from a darkmux checkout:
+          \`\`\`
+          python3 scripts/verify-tap-pin.py --tag <the released tag>
+          \`\`\`"
