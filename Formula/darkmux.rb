@@ -160,3 +160,5 @@ class Darkmux < Formula
     system bin/"darkmux", "doctor"
   end
 end
+
+# sync-path test marker, removed by the next sync from upstream
